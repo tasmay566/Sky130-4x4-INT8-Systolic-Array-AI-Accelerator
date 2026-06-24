@@ -62,13 +62,17 @@ The accelerator is built upon a highly pipelined, spatial computing architecture
 
 #### 1) RTL Design
 The structural and behavioral logic of the systolic array and top-level wrapper was authored entirely in **Verilog**, ensuring synthesizable, cycle-accurate behavior tailored for ASIC implementation.
+* RTL was written in Verilog
+* A fully parametrized design for flexibility
 
 #### 2) Functional Verification
-Before synthesis, the RTL was rigorously verified to confirm functional correctness of the MAC operations and mesh dataflow using Icarus Verilog and Cocotb.
+Before synthesis, the RTL was rigorously verified to confirm functional correctness of the MAC operations and mesh dataflow.
+* Simulation tools: Icarus Verilog and Cocotb.
+* Waveform generation: GTKWave
 
 <a id="logic-synthesis"></a>
 #### 3) Logic Synthesis
-The verified RTL was synthesized into a gate-level netlist mapping to standard cells using the OpenLane ASIC Flow and SkyWater 130nm (`sky130A`) PDK.
+The verified RTL was synthesized into a gate-level netlist mapping to standard cells using the OpenLane ASIC Flow and SkyWater 130nm (`sky130A`) PDK. 
 
 | Category | Parameter | Count |
 | :--- | :--- | :--- |
@@ -168,22 +172,22 @@ Power consumption was estimated post-routing, confirming highly efficient INT8 o
 
 Designing a massive parallel architecture using the SkyWater 130nm PDK and the OpenLane flow presented several deep technical challenges, especially when constraining the physical synthesis to a local machine with 8GB of RAM. Below is a breakdown of the primary engineering bottlenecks and how they were resolved to achieve a 100% tapeout-ready GDSII.
 
-### a. The "OOM Sniper" & Swap Thrashing (WSL Limitations)
+### a) The "OOM Sniper" & Swap Thrashing (WSL Limitations)
 **The Problem:** Initial attempts to physically route the full **8x8 Systolic Array** caused the Windows Subsystem for Linux (WSL) to silently crash during Step 27 (Detailed Routing). The algorithm demanded over 12GB+ of active memory, forcing the OS into "swap thrashing" between the physical RAM and the hard drive, eventually triggering the OS Out-Of-Memory (OOM) killer.
 
 **The Solution:** To validate the pipelined architecture without requiring a remote compute cluster, the Verilog parameters were scaled down to a **4x4 Proof-of-Concept array**. This reduced the physical gate count by 75%, bringing the peak memory usage during TritonRoute down to a stable `1.7 GB`. The WSL environment was stabilized by defining a strict `6GB RAM / 4GB Swap` safety net in the `.wslconfig` file, allowing local compilation in under 20 minutes.
 
-### b. The Synthesis "Hollow-Out" (Yosys Aggressive Optimization)
+### b) The Synthesis "Hollow-Out" (Yosys Aggressive Optimization)
 **The Problem:** During the initial 8x8 runs, an analysis of the ABC engine logic mapping (`metrics.csv`) revealed that the chip only contained ~596 flip-flops—far fewer than the ~2,560 required for a 64-PE grid. Because only the partial sums of Column 0 were exposed to the physical output pins, the Yosys synthesis engine aggressively optimized away 87% of the matrix (Columns 1-7), resulting in a functionally "hollow" chip.
 
 **The Solution:** Implemented a **Spatial XOR Fold** at the top wrapper level. By XORing the outputs of all columns together into a single 32-bit output pin (`data_out <= col0 ^ col1 ^ col2 ^ col3`), Yosys was forced to recognize that every single Processing Element contributed to the final logical output. The subsequent run successfully preserved all 16 PEs and ~697 pipeline registers in physical silicon.
 
-### c. Defeating Antenna Violations in High-Density Grids
+### c) Defeating Antenna Violations in High-Density Grids
 **The Problem:** After securing the logic, the OpenROAD Antenna Rule Checker (ARC) flagged a stubborn net antenna violation (`net_antenna_violations: 1`). Because the initial $0.8\text{ mm} \times 0.8\text{ mm}$ die area was packed at a 60% target density, the global router lacked the physical breathing room to insert adequate protective diodes on a long, heavily routed internal wire.
 
 **The Solution:** The silicon floorplan was relaxed by lowering the `PL_TARGET_DENSITY` to `0.45` and aggressively increasing the `GRT_MAX_DIODE_INS_ITERS` to `20` in the `config.json`. This algorithmic persistence allowed the flow to place over `5,300` heuristic diodes, perfectly shielding the routing layers and achieving **0 Antenna Violations** and **0 DRC/Magic Violations**.
 
-### d. High Fanout in Parallel Control Paths
+### d) High Fanout in Parallel Control Paths
 **The Problem:** The final signoff generated a `MAX_FANOUT_CONSTRAINT` warning. In a systolic array, control signals like `reset` and `load_weight` act as massive broadcast nets, inherently violating the default constraint of 10 gates per driver.
 
 **The Solution:** Rather than unnecessarily buffering the control tree and wasting silicon area, a deep dive into the Static Timing Analysis (STA) was performed. The reports confirmed that the Worst Negative Slack (`wns`), Setup, and Hold timings were all precisely `0.0`. Because the signal propagation easily met the 20.0ns clock constraint (achieving a theoretical $F_{max}$ of ~130 MHz), the architecture was deemed functionally safe, and the fanout limit was relaxed to match the spatial broadcast reality of the array. 
