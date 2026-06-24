@@ -1,7 +1,7 @@
 # Sky130-4x4-INT8-Systolic-Array-AI-Accelerator
 A complete RTL-to-GDSII physical implementation of an edge-AI matrix multiplication engine using the OpenLane ASIC flow.
 
-<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/cba3ffe3-6f62-4f66-a98d-eb6c062976e9" />
+<img width="1024" height="559" alt="image" src="./images/Gemini_Generated_Image_1kmf8l1kmf8l1kmf.png" width="800" alt="Systolic Array Architecture" />
 
 
 ## Table of Contents
@@ -96,9 +96,9 @@ Following floorplanning, placement, clock tree synthesis (CTS), and routing, phy
 * **DRC (Design Rule Check):** 0 Violations (Magic)
 * **LVS (Layout vs. Schematic):** 0 Errors (Netgen)
 * **Antenna Violations:** 0 Violations (OpenROAD ARC)
-  
-<img width="1447" height="902" alt="Screenshot 2026-06-24 114545" src="https://github.com/user-attachments/assets/3bfad556-6b19-4bcf-8a4e-923657801cfd" />
-<img width="1446" height="902" alt="m" src="https://github.com/user-attachments/assets/15f679eb-37e9-4504-bfeb-06b6e86caddb" />
+
+<img src="./images/n.png" width="800" alt="Systolic Array Architecture" />
+<img src="./images/m.png" width="800" alt="Systolic Array Architecture" />
 
 
 
